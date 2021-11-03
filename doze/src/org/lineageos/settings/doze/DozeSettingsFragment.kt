@@ -10,20 +10,20 @@ import android.app.AlertDialog
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.LayoutInflater
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
+import android.widget.CompoundButton
 import android.widget.Switch
-import androidx.preference.ListPreference
-import androidx.preference.Preference
-import androidx.preference.PreferenceCategory
-import androidx.preference.PreferenceFragment
-import androidx.preference.SwitchPreference
-
-import com.android.settingslib.widget.MainSwitchPreference
-import com.android.settingslib.widget.OnMainSwitchChangeListener
+import android.widget.TextView
+import androidx.preference.*
 
 class DozeSettingsFragment : PreferenceFragment(), Preference.OnPreferenceChangeListener,
-    OnMainSwitchChangeListener {
+    CompoundButton.OnCheckedChangeListener {
     private lateinit var alwaysOnDisplayPreference: SwitchPreference
-    private lateinit var switchBar: MainSwitchPreference
+    private lateinit var switchBar: View
+    private lateinit var textView: TextView
 
     private var pickUpPreference: ListPreference? = null
     private var pocketPreference: SwitchPreference? = null
@@ -32,6 +32,7 @@ class DozeSettingsFragment : PreferenceFragment(), Preference.OnPreferenceChange
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.doze_settings)
+        activity.actionBar?.setDisplayHomeAsUpEnabled(true)
 
         val prefs = activity.getSharedPreferences("doze_settings", Activity.MODE_PRIVATE)!!
         if (savedInstanceState == null && !prefs.getBoolean("first_help_shown", false)) {
@@ -45,10 +46,6 @@ class DozeSettingsFragment : PreferenceFragment(), Preference.OnPreferenceChange
         }
 
         val dozeEnabled = Utils.isDozeEnabled(context)
-        switchBar = findPreference(Utils.DOZE_ENABLE)!!
-        switchBar.addOnSwitchChangeListener(this)
-        switchBar.isChecked = dozeEnabled
-
         alwaysOnDisplayPreference = findPreference(Utils.ALWAYS_ON_DISPLAY)!!
         alwaysOnDisplayPreference.isEnabled = dozeEnabled
         alwaysOnDisplayPreference.isChecked = Utils.isAlwaysOnEnabled(context)
@@ -83,6 +80,35 @@ class DozeSettingsFragment : PreferenceFragment(), Preference.OnPreferenceChange
         }
     }
 
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View {
+        val view = LayoutInflater.from(context).inflate(R.layout.doze, container, false)
+        (view as ViewGroup).addView(super.onCreateView(inflater, container, savedInstanceState))
+        return view
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val dozeEnabled = Utils.isDozeEnabled(context)
+
+        textView = view.findViewById(R.id.switch_text)
+        textView.text =
+            getString(if (dozeEnabled) R.string.switch_bar_on else R.string.switch_bar_off)
+        switchBar = view.findViewById(R.id.switch_bar)
+
+        val switchWidget = switchBar.findViewById<Switch>(android.R.id.switch_widget)
+        switchWidget.isChecked = dozeEnabled
+        switchWidget.setOnCheckedChangeListener(this)
+
+        switchBar.isActivated = dozeEnabled
+        switchBar.setOnClickListener {
+            switchWidget.isChecked = !switchWidget.isChecked
+            switchBar.isActivated = switchWidget.isChecked
+        }
+    }
+
     override fun onPreferenceChange(preference: Preference, newValue: Any?): Boolean {
         if (preference.key == Utils.ALWAYS_ON_DISPLAY) {
             Utils.enableAlwaysOn(context, newValue as Boolean)
@@ -91,11 +117,13 @@ class DozeSettingsFragment : PreferenceFragment(), Preference.OnPreferenceChange
         return true
     }
 
-    override fun onSwitchChanged(switchView: Switch, isChecked: Boolean) {
+    override fun onCheckedChanged(compoundButton: CompoundButton, isChecked: Boolean) {
         Utils.enableDoze(context, isChecked)
         Utils.checkDozeService(context)
 
-        switchBar.isChecked = isChecked
+        textView.text =
+            getString(if (isChecked) R.string.switch_bar_on else R.string.switch_bar_off)
+        switchBar.isActivated = isChecked
 
         if (!isChecked) {
             Utils.enableAlwaysOn(context, false)
@@ -107,4 +135,13 @@ class DozeSettingsFragment : PreferenceFragment(), Preference.OnPreferenceChange
         pocketPreference?.isEnabled = isChecked
     }
 
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.home -> {
+                activity.onBackPressed()
+                true
+            }
+            else -> false
+        }
+    }
 }
