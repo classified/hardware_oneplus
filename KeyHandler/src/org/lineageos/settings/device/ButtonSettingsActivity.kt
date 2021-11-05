@@ -14,7 +14,7 @@ class ButtonSettingsActivity : CollapsingToolbarBaseActivity() {
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         fragmentManager.beginTransaction().replace(
-            R.id.content_frame,
+            com.android.settingslib.collapsingtoolbar.R.id.content_frame,
             ButtonSettingsFragment()
         ).commit()
     }
