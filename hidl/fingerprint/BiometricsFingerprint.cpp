@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define LOG_TAG "android.hardware.biometrics.fingerprint@2.3-service"
-#define LOG_VERBOSE "android.hardware.biometrics.fingerprint@2.3-service"
+#define LOG_TAG "android.hardware.biometrics.fingerprint@2.3-service.oneplus"
+#define LOG_VERBOSE "android.hardware.biometrics.fingerprint@2.3-service.oneplus"
 
 #include <hardware/hw_auth_token.h>
 
@@ -260,7 +260,7 @@ Return<uint64_t> BiometricsFingerprint::preEnroll()  {
 Return<RequestStatus> BiometricsFingerprint::enroll(const hidl_array<uint8_t, 69>& hat,
         uint32_t gid, uint32_t timeoutSec) {
     mVendorDisplayService->setMode(OP_DISPLAY_SET_DIM, 1);
-    mVendorFpService->upgit cherry-pick --continuedateStatus(OP_DISABLE_FP_LONGPRESS);
+    mVendorFpService->updateStatus(OP_DISABLE_FP_LONGPRESS);
     mVendorFpService->updateStatus(OP_RESUME_FP_ENROLL);
 
     const hw_auth_token_t* authToken =
@@ -326,11 +326,19 @@ IBiometricsFingerprint* BiometricsFingerprint::getInstance() {
     return sInstance;
 }
 
+const char* BiometricsFingerprint::getModuleId() {
+    int sensor_version = -1;
+    std::ifstream file("/sys/devices/platform/soc/soc:fingerprint_detect/sensor_version");
+    file >> sensor_version;
+    ALOGI("fp sensor version is: 0x%x", sensor_version);
+    return sensor_version == 0x9638 ? "goodix.g6.fod" : "goodix.fod";
+}
+
 fingerprint_device_t* BiometricsFingerprint::openHal() {
     int err;
     const hw_module_t *hw_mdl = nullptr;
     ALOGD("Opening fingerprint hal library...");
-    if (0 != (err = hw_get_module("goodix.fod", &hw_mdl))) {
+    if (0 != (err = hw_get_module(getModuleId(), &hw_mdl))) {
         ALOGE("Can't open fingerprint HW Module, error: %d", err);
         return nullptr;
     }
